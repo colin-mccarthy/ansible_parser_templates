@@ -1,0 +1,46 @@
+---
+- name: parser meta data
+  parser_metadata:
+    version: 1.0
+    command: "show ip route {{ subnet }} vrf all | in Table|attached|via | ex <string>"
+    network_os: nxos
+
+- name: match sections
+  pattern_match: 
+    regex: "IP Route Table for VRF.+"
+    match_all: yes
+    match_greedy: yes
+  register: section
+
+- name: match routes
+  pattern_group:
+    - name: match table name
+      pattern_match:
+        regex: "IP Route Table for VRF \"(\\S+)\""
+        content: "{{ item }}"
+      register: table_name
+    - name: match subnet
+      pattern_match:
+        regex: "(\\d+\\.\\d+\\.\\d+\\.\\d+/\\d+),"
+        content: "{{ item }}"
+      register: subnet
+    - name: match gateway
+      pattern_match:
+        regex: "\t*via (\\d+\\.\\d+\\.\\d+\\.\\d+)"
+        content: "{{ item }}"
+      register: gateway
+  loop: "{{ section }}"
+  register: routes
+
+- name: generate json data structure
+  json_template:
+    template:
+    - key: "{{ item.table_name.matches.0 }}"
+      object:
+      - key: subnet
+        value: "{{ item.subnet.matches.0 }}"
+      - key: gateway
+        value: "{{ item.gateway.matches.0 }}"
+  loop: "{{ routes }}"
+  export: yes
+  register: route_tables
