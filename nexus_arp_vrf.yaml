@@ -1,0 +1,45 @@
+---
+- name: parser meta data
+  parser_metadata:
+    version: 1.0
+    command: show ip arp vrf all
+    network_os: nxos
+
+- name: match sections
+  pattern_match:
+    regex: "Address.+"
+    match_all: yes
+    match_greedy: yes
+  register: context
+  export: yes
+
+- name: match lines
+  pattern_match:
+    regex: "\\d.+"
+    match_all: yes
+    match_greedy: yes
+    content: "{{ context.0 }}"
+  register: lines
+
+- name: match addresses
+  pattern_match:
+    regex: "^(?P<ip>[0-9a-f.]+)\\s+(?P<age>[0-9:|-]+)\\s+(?P<mac>[0-9a-f.|INCOMPLETE]+)\\s+(?P<interface>.+)\\s*"
+    content: "{{ item }}"
+  loop: "{{ lines }}"
+  register: addresses
+
+- name: template entries
+  json_template:
+    template:
+      - key: "{{ item.ip }}"
+        object:
+        - key: age
+          value: "{{ item.age }}"
+        - key: mac_address
+          value: "{{ item.mac }}"
+        - key: interface
+          value: "{{ item.interface }}"
+  register: address_list
+  loop: "{{ addresses }}"
+  export_as: dict
+  export: true
