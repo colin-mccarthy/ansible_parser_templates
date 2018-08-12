@@ -1,0 +1,66 @@
+---
+- name: parser meta data
+  parser_metadata:
+    version: 1.0
+    command: "show ip route vrf {{ table }} {{ ip_address }} | in Table|attached|via|table"
+    network_os: ios
+
+- name: match sections
+  pattern_match:
+    regex: "Routing Table.+"
+    match_all: yes
+    match_greedy: yes
+  register: section
+
+- name: match routes
+  pattern_group:
+    - name: match table name
+      pattern_match:
+        regex: "Routing Table: (\\S+)"
+        content: "{{ item }}"
+      register: table_name
+    - name: match connection
+      pattern_match:
+        regex: "Known via \"(.+)\","
+        content: "{{ item }}"
+      register: connection
+    - name: match distance
+      pattern_match:
+        regex: "distance (\\d+),"
+        content: "{{ item }}"
+      register: distance
+    - name: match metric
+      pattern_match:
+        regex: "metric (\\d+),"
+        content: "{{ item }}"
+      register: metric
+    - name: match interface
+      pattern_match:
+        regex: "directly connected, via (\\S+)"
+        content: "{{ item }}"
+      register: interface
+    - name: match next hop
+      pattern_match:
+        regex: "\\* (\\d+\\.\\d+\\.\\d+\\.\\d+),"
+        content: "{{ item }}"
+      register: next_hop
+  loop: "{{ section }}"
+  register: routes
+
+- name: generate json data structure
+  json_template:
+    template:
+    - key: table_name 
+      value: "{{ item.table_name.matches.0 }}"
+    - key: connection
+      value: "{{ item.connection.matches.0 | default(False) }}"
+    - key: interface
+      value: "{{ item.interface.matches.0 }}"
+    - key: subinterface
+      value: "{{ item.interface.matches.0.split('.')[-1] }}"
+    - key: next_hop
+      value: "{{ item.next_hop.matches.0 }}"
+  register: route_tables
+  loop: "{{ routes }}"
+  export_as: dict
+  export: true
