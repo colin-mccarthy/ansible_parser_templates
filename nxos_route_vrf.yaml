@@ -2,7 +2,7 @@
 - name: parser meta data
   parser_metadata:
     version: 1.0
-    command: show ip route {{ subnet }} vrf all 
+    command: show ip route {{ subnet }} vrf all | in Table|attached|via | ex <string>"
     network_os: nxos
 
 - name: match sections
