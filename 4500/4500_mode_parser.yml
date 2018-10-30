@@ -1,0 +1,20 @@
+---
+- name: parser meta data
+  parser_metadata:
+    version: 1.0
+    command: show switch virtual
+    network_os: ios
+
+- name: match mode
+  pattern_match:
+    regex: '^Switch mode .*: (.*)'
+  register: mode
+
+- name: build mode facts
+  json_template:
+    template:
+      - key: mode
+        value: "{{ mode.matches.0 }}"
+  register: mode_facts
+  export: true
+  export_as: dict

@@ -1,0 +1,38 @@
+---
+
+
+- name: files
+  pattern_match:
+    regex: 'cat4500\S*.bin'
+    match_all: yes
+    #content: "{{ item }}"
+  register: files
+  export: yes
+  export_as: list
+
+
+- name: avail meme
+  pattern_match:
+    regex: '\((\S*) bytes free\)'
+  register: meme
+
+
+
+- name: files values json
+  register: files_list
+  export: yes
+  export_as: dict
+  json_template:
+    template:
+    - key: data
+      value: "{{ files | map(attribute='matches') | list }}"
+
+
+- name: memory free json
+  register: mem_free
+  export: yes
+  export_as: dict
+  json_template:
+    template:
+    - key: data
+      value: "{{ meme.matches.0 }}"
